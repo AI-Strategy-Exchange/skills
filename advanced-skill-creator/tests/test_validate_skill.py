@@ -1,11 +1,15 @@
-import sys
+import importlib.util
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "skills/advanced-skill-creator/scripts"))
-
-from validate_skill import parse_tool_list, validate_skill
+SCRIPT = Path(__file__).resolve().parents[1] / "skills/advanced-skill-creator/scripts/validate_skill.py"
+spec = importlib.util.spec_from_file_location("validate_skill", SCRIPT)
+assert spec and spec.loader
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+parse_tool_list = module.parse_tool_list
+validate_skill = module.validate_skill
 
 DESC = "description: Deploy the app to production when the user asks for a release."
 
