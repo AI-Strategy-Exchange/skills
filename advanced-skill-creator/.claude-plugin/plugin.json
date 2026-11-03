@@ -1,6 +1,6 @@
 {
   "name": "advanced-skill-creator",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Create, test, and distribute Claude skills with a self-correcting Architect path.",
   "author": {
     "name": "Cadence"

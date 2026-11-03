@@ -16,7 +16,7 @@ description: >
 license: CC BY-NC 4.0
 metadata:
   author: cadence
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Skill Creator
@@ -138,6 +138,26 @@ metadata:                   # optional; arbitrary key-value pairs
 
 The `name` must match the parent directory name.
 
+### Claude Code fields (optional)
+
+Claude Code reads more frontmatter than the open standard defines. These are
+the ones that matter most; the full list is at
+https://code.claude.com/docs/en/skills#frontmatter-reference.
+
+```yaml
+when_to_use: Trigger phrases or example requests.  # appended to description in the listing
+disable-model-invocation: true   # Claude never loads it on its own; runs only via /name
+user-invocable: false            # hidden from the / menu; only Claude loads it
+argument-hint: "[env]"           # shown after /name in the menu
+allowed-tools: Bash(git status *) Read   # string or YAML list; patterns allowed
+paths: src/**/*.ts               # only activate for matching files
+model: sonnet                    # model to run the skill on
+effort: low                      # effort level while the skill runs
+```
+
+claude.ai and the Skills API may reject Claude Code-only fields, so check
+before uploading a skill there.
+
 ### Installation locations
 
 | Scope | Path |
@@ -155,6 +175,10 @@ Extract answers from the current conversation first — only ask what you can't 
 - What should this skill help the agent do?
 - When should it activate? (what user phrases or contexts)
 - What does a good output look like?
+- Who starts it? If it should run only when the user asks by name (deploys,
+  sends, posts, reports, anything with side effects or a fixed occasion), set
+  `disable-model-invocation: true`. The skill then stays out of the listing
+  Claude reads every turn and is still available as `/name`.
 
 If the user says "turn this into a skill," extract the workflow from the
 conversation: tools used, step sequence, corrections made. Confirm before writing.
@@ -177,7 +201,13 @@ work with .pdf files, mentions forms or document extraction, or says things like
 
 ### Three-level loading
 
-1. **Frontmatter** (~100 tokens): always in context for all skills
+1. **Listing entry**: `name` plus `description` and `when_to_use`, always in
+   context for every skill Claude can invoke on its own. Claude Code cuts each
+   entry at 1,536 characters, and the whole listing shares a budget of about 1%
+   of the context window. When the listing overflows, the least-used skills
+   lose their descriptions first and show only their names, so they stop
+   triggering. Put the key use case in the first sentence and keep the entry
+   short; a 1,024-character description costs about 250 tokens on every turn.
 2. **SKILL.md body** (<500 lines / ~5k tokens): loads when skill activates
 3. **Referenced files**: load on demand only when needed
 
@@ -246,8 +276,10 @@ mkdir -p .claude/skills/my-skill
 cp SKILL.md .claude/skills/my-skill/
 ```
 
-Restart Claude Code (or open a new session) and test by sending a prompt that
-should trigger it. **If that's all you need, stop here.** Steps 3–5 and the
+Claude Code picks up new and edited skills in the running session (run
+`/reload-skills` if you created the `skills/` directory itself during the
+session). Test by sending a prompt that should trigger it, or `/my-skill` for a
+manual-only skill. **If that's all you need, stop here.** Steps 3–5 and the
 Architect path below are only for when the user explicitly wants testing,
 distribution, or description tuning.
 
@@ -387,10 +419,15 @@ See [scripts/validate_skill.py](scripts/validate_skill.py) for the full implemen
 Checks performed:
 - `name` is kebab-case, max 64 chars, matches directory name
 - `description` has no angle brackets, max 1024 chars
+- `description` + `when_to_use` over 1,536 chars warns (Claude Code truncates it in the listing)
 - `compatibility` max 500 chars
-- No unexpected frontmatter keys
-- `allowed-tools` — validates against known Claude tools; MCP tools must follow `mcp__<server>__<tool>` format; warns if Bash is included; warns if a declared MCP server isn't referenced in the skill body
+- No keys outside the open standard and Claude Code's documented fields; Claude Code-only fields warn, since claude.ai uploads may reject them
+- `disable-model-invocation` and `user-invocable` are booleans
+- `allowed-tools`: string or YAML list, permission patterns such as `Bash(git add *)` allowed; MCP tools must follow `mcp__<server>__<tool>`; unrecognized tool names and unscoped `Bash` warn; warns if a declared MCP server isn't referenced in the skill body
 - `agents/` directory — all files must be `.md`; referenced agent files must exist
+
+For the exact parse Claude Code runs, also run `claude plugin validate <dir>`
+(Claude Code v2.1.233+).
 
 ---
 

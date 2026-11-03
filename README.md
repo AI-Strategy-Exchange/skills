@@ -160,7 +160,7 @@ curl -L -o decision-engine-builder.skill \
 unzip decision-engine-builder.skill -d ~/.claude/skills/
 ```
 
-Same pattern for the others. Restart Claude Code after extracting.
+Same pattern for the others. Claude Code picks up the new skill in the running session.
 
 ## Manual
 
