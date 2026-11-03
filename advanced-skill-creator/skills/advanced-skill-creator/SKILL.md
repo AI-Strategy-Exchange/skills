@@ -150,7 +150,7 @@ disable-model-invocation: true   # Claude never loads it on its own; runs only v
 user-invocable: false            # hidden from the / menu; only Claude loads it
 argument-hint: "[env]"           # shown after /name in the menu
 allowed-tools: Bash(git status *) Read   # string or YAML list; patterns allowed
-paths: src/**/*.ts               # only activate for matching files
+paths: src/**/*.ts               # load automatically only for matching files
 model: sonnet                    # model to run the skill on
 effort: low                      # effort level while the skill runs
 ```
@@ -177,8 +177,8 @@ Extract answers from the current conversation first — only ask what you can't 
 - What does a good output look like?
 - Who starts it? If it should run only when the user asks by name (deploys,
   sends, posts, reports, anything with side effects or a fixed occasion), set
-  `disable-model-invocation: true`. The skill then stays out of the listing
-  Claude reads every turn and is still available as `/name`.
+  `disable-model-invocation: true`. Claude then never loads it on its own, its
+  description stays out of context, and it still runs as `/name`.
 
 If the user says "turn this into a skill," extract the workflow from the
 conversation: tools used, step sequence, corrections made. Confirm before writing.

@@ -58,14 +58,28 @@ BOOLEAN_KEYS = {"disable-model-invocation", "user-invocable"}
 # in the skill listing it puts in context.
 LISTING_CHAR_CAP = 1536
 
-# A permission pattern may contain spaces: "Bash(git add *)" is one entry.
-TOOL_ENTRY_RE = re.compile(r"[^\s,()]+(?:\([^)]*\))?")
+OPTIONAL_STRING_KEYS = {"when_to_use", "compatibility", "license"}
 
 
 def parse_tool_list(value):
     if isinstance(value, list):
         return [str(v).strip() for v in value if str(v).strip()]
-    return TOOL_ENTRY_RE.findall(value)
+    # Separators inside a permission pattern belong to it: "Bash(git add *)" is one entry.
+    entries, current, depth = [], "", 0
+    for ch in value:
+        if ch == "(":
+            depth += 1
+        elif ch == ")" and depth:
+            depth -= 1
+        if depth == 0 and (ch.isspace() or ch == ","):
+            if current:
+                entries.append(current)
+            current = ""
+        else:
+            current += ch
+    if current:
+        entries.append(current)
+    return entries
 
 
 def validate_skill(skill_path):
@@ -149,10 +163,14 @@ def validate_skill(skill_path):
                     "trigger reliability improves with concrete when-to-use phrasing"
                 )
 
-    when_to_use = fm.get("when_to_use") or ""
-    if when_to_use and not isinstance(when_to_use, str):
-        issues.append(f"'when_to_use' must be a string, got {type(when_to_use).__name__}")
-    elif isinstance(desc, str):
+    for key in sorted(OPTIONAL_STRING_KEYS & fm.keys()):
+        if not isinstance(fm[key], str):
+            issues.append(f"'{key}' must be a string, got {fm[key]!r}")
+
+    when_to_use = fm.get("when_to_use")
+    if not isinstance(when_to_use, str):
+        when_to_use = ""
+    if isinstance(desc, str):
         listed = len(desc.strip()) + len(when_to_use.strip())
         if listed > LISTING_CHAR_CAP:
             warnings.append(
@@ -177,10 +195,8 @@ def validate_skill(skill_path):
             "Check they are accepted before uploading to claude.ai or the Skills API"
         )
 
-    compat = fm.get("compatibility", "")
-    if compat and not isinstance(compat, str):
-        issues.append(f"'compatibility' must be a string, got {type(compat).__name__}")
-    elif compat and len(compat) > 500:
+    compat = fm.get("compatibility")
+    if isinstance(compat, str) and len(compat) > 500:
         issues.append(f"Compatibility too long ({len(compat)} chars, max 500)")
 
     allowed_tools = fm.get("allowed-tools")
